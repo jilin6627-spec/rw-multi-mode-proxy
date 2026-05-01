@@ -25,11 +25,19 @@ app.get('/', (req, res) => {
     res.send('<html><body style="background:#000;color:#0f0;font-family:monospace;"><h1>System Diagnostic Tool</h1><p>Status: All systems operational.</p></body></html>');
 });
 
-// 2. 核心认证函数
+// 2. 核心认证函数 - 同时支持 HTTP 代理(PROXY-AUTH)和 HTTPS CONNECT(AUTHORIZATION)
 function checkAuth(req) {
-    const credentials = auth(req);
-    // 同时支持 URL Params 里的认证(防某些特殊场景)
+    // 优先检查 URL 参数（备用认证方式）
     if (req.url.includes(`user=${PROXY_USER}`) && req.url.includes(`pass=${PROXY_PASS}`)) return true;
+    
+    // HTTP 代理请求使用 Proxy-Authorization 头
+    let credentials = null;
+    if (req.headers['proxy-authorization']) {
+        credentials = auth.parse(req.headers['proxy-authorization']);
+    } else if (req.headers['authorization']) {
+        // HTTPS CONNECT 使用 Authorization 头（已在 connect 事件单独处理）
+        credentials = auth(req);
+    }
     return (credentials && credentials.name === PROXY_USER && credentials.pass === PROXY_PASS);
 }
 
