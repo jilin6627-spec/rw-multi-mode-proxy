@@ -7,7 +7,7 @@ const express = require('express');
 // ========== 环境变量与伪装配置 ==========
 const PORT = process.env.PORT || 3000;
 const PROXY_USER = process.env.PROXY_USER || 'admin';
-const PROXY_PASS = process.env.PROXY_PASS || 'railway2026';
+const PROXY_PASS = process.env.PROXY_PASS || 'glm123456';
 const CAMOUFLAGE_URL = process.env.CAMOUFLAGE_URL || 'https://www.wikipedia.org';
 
 /**
