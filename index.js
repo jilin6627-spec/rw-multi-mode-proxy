@@ -273,7 +273,7 @@ function startSocks5() {
     clientSocket.on('close', () => {});
   });
 
-  socksServer.listen(SOCKS5_PORT, '::', () => {
+  socksServer.listen(SOCKS5_PORT, '0.0.0.0', () => {
     console.log(`[SOCKS5] SOCKS5 proxy listening on port ${SOCKS5_PORT}`);
   });
 
