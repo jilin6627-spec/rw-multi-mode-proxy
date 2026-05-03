@@ -12,6 +12,9 @@ const TARGET_HOST = process.env.TARGET_HOST || 'localhost';
 const TARGET_PORT = parseInt(process.env.TARGET_PORT || '3000', 10);
 const PROXY_USER = process.env.PROXY_USER || 'admin';
 const PROXY_PASS = process.env.PROXY_PASS || 'glm123456';
+// Debug: show loaded env (masked)
+console.log('[CONFIG] PROXY_USER=' + PROXY_USER + ', PROXY_PASS=' + (PROXY_PASS ? '***' : 'empty'));
+
 const ARGO_AUTH = process.env.ARGO_AUTH || '';
 const ARGO_DOMAIN = process.env.ARGO_DOMAIN || '';
 
