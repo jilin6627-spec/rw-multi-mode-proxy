@@ -105,7 +105,78 @@ server.on('connect', (req, clientSocket, head) => {
     clientSocket.on('error', () => serverSocket.destroy());
 });
 
-server.listen(PORT, '0.0.0.0', () => {
+
+// ========== SOCKS5 代理服务器 ==========
+const SOCKS5_PORT = process.env.SOCKS5_PORT || 3001;
+
+const socksServer = net.createServer((clientSocket) => {
+    clientSocket.once('data', (request) => {
+        const buf = Buffer.from(request);
+        // SOCKS5 握手：版本 5，方法 0(无认证)
+        if (buf[0] === 0x05) {
+            clientSocket.write(Buffer.from([0x05, 0x00]));
+            
+            clientSocket.once('data', (reqBuf) => {
+                const req = Buffer.from(reqBuf);
+                if (req[0] === 0x05 && req[1] === 0x01) { // CONNECT
+                    const addrType = req[3];
+                    let host, port;
+                    
+                    if (addrType === 0x01) { // IPv4
+                        host = `${req[4]}.${req[5]}.${req[6]}.${req[7]}`;
+                        port = (req[8] << 8) | req[9];
+                    } else if (addrType === 0x03) { // Domain
+                        const domainLen = req[4];
+                        host = req.slice(5, 5 + domainLen).toString('utf8');
+                        port = (req[5 + domainLen] << 8) | req[6 + domainLen];
+                    } else if (addrType === 0x04) { // IPv6
+                        host = Array.from(req.slice(4, 20))
+                            .map(b => b.toString(16).padStart(2, '0'))
+                            .reduce((acc, hex, i, arr) => 
+                                acc + hex + (i % 2 === 1 && i < arr.length - 1 ? ':' : ''), '');
+                        port = (req[20] << 8) | req[21];
+                    } else {
+                        clientSocket.write(Buffer.from([0x05, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
+                        clientSocket.destroy();
+                        return;
+                    }
+                    
+                    const serverSocket = net.createConnection(port, host, () => {
+                        clientSocket.write(Buffer.from([0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
+                        serverSocket.pipe(clientSocket);
+                        clientSocket.pipe(serverSocket);
+                    });
+                    
+                    serverSocket.on('error', () => {
+                        clientSocket.write(Buffer.from([0x05, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
+                        clientSocket.destroy();
+                    });
+                } else {
+                    clientSocket.write(Buffer.from([0x05, 0x07, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
+                    clientSocket.destroy();
+                }
+            });
+        } else {
+            clientSocket.destroy();
+        }
+    });
+});
+
+if (SOCKS5_PORT) {
+    try {
+        socksServer.listen(SOCKS5_PORT, '::', () => {
+            console.log(`[SOCKS5] SOCKS5 proxy listening on port ${SOCKS5_PORT}`);'', '::');
+        });
+        socksServer.on('error', (err) => {
+            console.error(`[SOCKS5] Error: ${err.message}`);
+        });
+    } catch (err) {
+        console.error(`[SOCKS5] Failed to start: ${err.message}`);
+    }
+}
+
+
+server.listen(PORT, '::', () => {
     console.log(`[SECURE PROXY] Multi-mode server active on port ${PORT}`);
     console.log(`[CAMOUFLAGE] Web interface enabled for anti-detection`);
 });
